@@ -13,180 +13,81 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package com.vaadin.ui;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
-import com.vaadin.server.ConnectorResource;
-import com.vaadin.server.ExternalResource;
+import com.vaadin.server.RequestHandler;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.server.VaadinResponse;
 import com.vaadin.server.VaadinService;
-import com.vaadin.server.VaadinServletService;
-import com.vaadin.shared.ApplicationConstants;
+import com.vaadin.server.VaadinSession;
+import com.vaadin.shared.ui.loginform.LoginFormConstants;
+import com.vaadin.shared.ui.loginform.LoginFormRpc;
+import com.vaadin.shared.ui.loginform.LoginFormState;
 
 /**
- * LoginForm is a Vaadin component to handle common problem among Ajax
- * applications: browsers password managers don't fill dynamically created forms
- * like all those UI elements created by Vaadin.
+ * Login form with auto-completion and auto-fill for all major browsers. You can
+ * derive from this class and implement the
+ * {@link #createContent(com.vaadin.ui.TextField, com.vaadin.ui.PasswordField, com.vaadin.ui.Button)}
+ * method to build the layout using the text fields and login button that are
+ * passed to that method. The supplied components are specially treated so that
+ * they work with password managers.
  * <p>
- * For developer it is easy to use: add component to a desired place in you UI
- * and add LoginListener to validate form input. Behind the curtain LoginForm
- * creates an iframe with static html that browsers detect.
+ * If you need to change the URL as part of the login procedure, call
+ * {@link #setLoginMode(LoginMode)} with the argument {@link LoginMode#DEFERRED}
+ * in your implementation of
+ * {@link #createContent(com.vaadin.ui.TextField, com.vaadin.ui.PasswordField, com.vaadin.ui.Button)
+ * createContent}.
  * <p>
- * Login form is by default 100% width and height, so consider using it inside a
- * sized {@link Panel} or {@link Window}.
- * <p>
- * Login page html can be overridden by replacing protected getLoginHTML method.
- * As the login page is actually an iframe, styles must be handled manually. By
- * default component tries to guess the right place for theme css.
- * 
- * @since 5.3
- * @deprecated As of 7.0. This component no longer fulfills its duty reliably in
- *             the supported browsers and a {@link VerticalLayout} with two
- *             {@link TextField}s can be used instead.
+ * To customize the fields or to replace them with your own implementations, you
+ * can override {@link #createUserNameField()}, {@link #createPasswordField()}
+ * and {@link #createLoginButton()}. These methods are called automatically and
+ * cannot be called by your code. Captions can be reset by overriding
+ * {@link #getUserNameFieldCaption()}, {@link #getPasswordFieldCaption()} and
+ * {@link #getLoginButtonCaption()}.
  */
-@Deprecated
-public class LoginForm extends CustomComponent {
-
-    private String usernameCaption = "Username";
-    private String passwordCaption = "Password";
-    private String loginButtonCaption = "Login";
-
-    private Embedded iframe = new Embedded();
-
-    @Override
-    public boolean handleConnectorRequest(final VaadinRequest request,
-            final VaadinResponse response, String path) throws IOException {
-        if (!path.equals("login")) {
-            return super.handleConnectorRequest(request, response, path);
-        }
-        final StringBuilder responseBuilder = new StringBuilder();
-
-        getUI().accessSynchronously(new Runnable() {
-            @Override
-            public void run() {
-                String method = VaadinServletService.getCurrentServletRequest()
-                        .getMethod();
-                if (method.equalsIgnoreCase("post")) {
-                    responseBuilder.append(handleLogin(request));
-                } else {
-                    responseBuilder.append(getLoginHTML());
-                }
-            }
-        });
-
-        if (responseBuilder.length() > 0) {
-            response.setContentType("text/html; charset=utf-8");
-            response.setCacheTime(-1);
-            response.getWriter().write(responseBuilder.toString());
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private String handleLogin(VaadinRequest request) {
-        // Ensure UI.getCurrent() works in listeners
-
-        Map<String, String[]> parameters = VaadinService.getCurrentRequest()
-                .getParameterMap();
-
-        HashMap<String, String> params = new HashMap<String, String>();
-        // expecting single params
-        for (Iterator<String> it = parameters.keySet().iterator(); it.hasNext();) {
-            String key = it.next();
-            String value = (parameters.get(key))[0];
-            params.put(key, value);
-        }
-        LoginEvent event = new LoginEvent(LoginForm.this, params);
-        fireEvent(event);
-
-        return "<html><body>Login form handled."
-                + "<script type='text/javascript'>parent.parent.vaadin.forceSync();"
-                + "</script></body></html>";
-    }
-
-    public LoginForm() {
-        iframe.setType(Embedded.TYPE_BROWSER);
-        iframe.setSizeFull();
-        setSizeFull();
-        setCompositionRoot(iframe);
-        addStyleName("v-loginform");
-    }
-
-    @Override
-    public void beforeClientResponse(boolean initial) {
-        // Generate magic URL now when UI id and connectorId are known
-        iframe.setSource(new ExternalResource(
-                ApplicationConstants.APP_PROTOCOL_PREFIX
-                        + ApplicationConstants.APP_PATH + '/'
-                        + ConnectorResource.CONNECTOR_PATH + '/'
-                        + getUI().getUIId() + '/' + getConnectorId() + "/login"));
-        super.beforeClientResponse(initial);
-    }
+public class LoginForm extends AbstractSingleComponentContainer {
 
     /**
-     * Returns byte array containing login page html. If you need to override
-     * the login html, use the default html as basis. Login page sets its target
-     * with javascript.
-     * 
-     * @return byte array containing login page html
+     * Determines the way in which the login form reacts to a login on the
+     * server side. The login mode is set by calling
+     * {@link LoginForm#setLoginMode(LoginMode)}.
      */
-    protected String getLoginHTML() {
-        return "<!DOCTYPE html>\n"
-                + "<html>"
-                + "<head><script type='text/javascript'>"
-                + "var setTarget = function() {"
-                + "var uri = window.location;"
-                + "var f = document.getElementById('loginf');"
-                + "document.forms[0].action = uri;document.forms[0].username.focus();};"
-                + ""
-                + "var styles = window.parent.document.styleSheets;"
-                + "for(var j = 0; j < styles.length; j++) {\n"
-                + "if(styles[j].href) {"
-                + "var stylesheet = document.createElement('link');\n"
-                + "stylesheet.setAttribute('rel', 'stylesheet');\n"
-                + "stylesheet.setAttribute('type', 'text/css');\n"
-                + "stylesheet.setAttribute('href', styles[j].href);\n"
-                + "document.getElementsByTagName('head')[0].appendChild(stylesheet);\n"
-                + "}"
-                + "}\n"
-                + "function submitOnEnter(e) { var keycode = e.keyCode || e.which;"
-                + " if (keycode == 13) {document.forms[0].submit();}  } \n"
-                + "</script>"
-                + "</head><body onload='setTarget();' style='margin:0;padding:0; background:transparent;' class=\""
-                + ApplicationConstants.GENERATED_BODY_CLASSNAME
-                + "\">"
-                + "<div class='v-app v-app-loginpage "
-                + getUIThemeClassName()
-                + "' style=\"background:transparent;\">"
-                + "<iframe name='logintarget' style='width:0;height:0;"
-                + "border:0;margin:0;padding:0;display:block'></iframe>"
-                + "<form id='loginf' target='logintarget' onkeypress=\"submitOnEnter(event)\" method=\"post\">"
-                + "<div>"
-                + usernameCaption
-                + "</div><div >"
-                + "<input class='v-textfield v-widget' style='display:block;' type='text' name='username'></div>"
-                + "<div>"
-                + passwordCaption
-                + "</div>"
-                + "<div><input class='v-textfield v-widget' style='display:block;' type='password' name='password'></div>"
-                + "<div><div onclick=\"document.forms[0].submit();\" tabindex=\"0\" class=\"v-button\" role=\"button\" ><span class=\"v-button-wrap\"><span class=\"v-button-caption\">"
-                + loginButtonCaption
-                + "</span></span></div></div></form></div>" + "</body></html>";
-    }
+    public static enum LoginMode {
+        /**
+         * Direct mode means that {@link LoginForm#login(String, String)} will
+         * be called as soon as the user clicks on the login button or presses
+         * the enter key in the user name or password text fields. In direct
+         * mode, you cannot change the URL in the
+         * {@link LoginForm#login(String, String)} method, otherwise the
+         * password manager will not be triggered.
+         * <p/>
+         * This is the default mode for a new login form instance.
+         */
+        DIRECT,
 
-    private String getUIThemeClassName() {
-        if (getUI() != null) {
-            return getUI().getTheme();
-        }
-        return "";
+        /**
+         * Deferred mode means that {@link LoginForm#login(String, String)} will
+         * be called after the dummy form submission that triggers the password
+         * manager has completed. In deferred mode, it is possible to change the
+         * URL in the {@link LoginForm#login(String, String)} method. The
+         * drawbacks with resepect to deferred mode are the following:
+         * <ul>
+         * <li>There will be a slight UI lag between the user action and the UI
+         * change</li>
+         * <li>Any UI change resulting from the login is not a direct
+         * consequence of the user input. If you use Vaadin TestBench, you have
+         * to add your own code to wait for any UI changes.</li>
+         * </ul>
+         */
+        DEFERRED;
     }
 
     /**
@@ -225,14 +126,10 @@ public class LoginForm extends CustomComponent {
          * This method is fired on each login form post.
          * 
          * @param event
+         *            Login event
          */
-        public void onLogin(LoginForm.LoginEvent event);
+        public void onLogin(LoginEvent event);
     }
-
-    private static final Method ON_LOGIN_METHOD;
-
-    private static final String UNDEFINED_HEIGHT = "140px";
-    private static final String UNDEFINED_WIDTH = "200px";
 
     static {
         try {
@@ -243,6 +140,226 @@ public class LoginForm extends CustomComponent {
             throw new java.lang.RuntimeException(
                     "Internal error finding methods in LoginForm");
         }
+    }
+
+    private static final Method ON_LOGIN_METHOD;
+
+    private boolean initialized;
+    private LoginMode loginMode = LoginMode.DIRECT;
+
+    private String usernameCaption = "Username";
+    private String passwordCaption = "Password";
+    private String loginButtonCaption = "Login";
+
+    /**
+     * Returns the {@link LoginMode} for this login form. The default is
+     * {@link LoginMode#DIRECT}.
+     * 
+     * @return the login mode
+     */
+    public LoginMode getLoginMode() {
+        return loginMode;
+    }
+
+    /**
+     * Set the {@link LoginMode} for this login form. The default is
+     * {@link LoginMode#DIRECT}
+     * 
+     * @param loginMode
+     *            the login mode
+     */
+    public void setLoginMode(LoginMode loginMode) {
+        this.loginMode = loginMode;
+    }
+
+    /**
+     * Customize the user name field. Only for overriding, do not call.
+     * 
+     * @return the user name field
+     */
+    protected TextField createUserNameField() {
+        checkInitialized();
+        TextField field = new TextField(usernameCaption);
+        field.focus();
+        return field;
+    }
+
+    public String getUsernameCaption() {
+        return usernameCaption;
+    }
+
+    public void setUsernameCaption(String cap) {
+        usernameCaption = cap;
+    }
+
+    /**
+     * Customize the password field. Only for overriding, do not call.
+     * 
+     * @return the password field
+     */
+    protected PasswordField createPasswordField() {
+        checkInitialized();
+        return new PasswordField(passwordCaption);
+    }
+
+    public String getPasswordCaption() {
+        return passwordCaption;
+    }
+
+    public void setPasswordCaption(String cap) {
+        passwordCaption = cap;
+        ;
+    }
+
+    /**
+     * Customize the login button. Only for overriding, do not call.
+     * 
+     * @return the login button
+     */
+    protected Button createLoginButton() {
+        checkInitialized();
+        return new Button(loginButtonCaption);
+    }
+
+    public String getLoginButtonCaption() {
+        return loginButtonCaption;
+    }
+
+    public void setLoginButtonCaption(String cap) {
+        loginButtonCaption = cap;
+    }
+
+    @Override
+    protected LoginFormState getState() {
+        return (LoginFormState) super.getState();
+    }
+
+    @Override
+    public void attach() {
+        super.attach();
+        init();
+    }
+
+    private void checkInitialized() {
+        if (initialized) {
+            throw new IllegalStateException(
+                    "Already initialized. The create methods may not be called explicitly.");
+        }
+    }
+
+    /**
+     * Create the content for the login form with the supplied user name field,
+     * password field and the login button. You cannot use any other text fields
+     * or buttons for this purpose. To replace these components with your own
+     * implementations, override {@link #createUserNameField()},
+     * {@link #createPasswordField()} and {@link #createLoginButton()}. If you
+     * only want to change the default captions, override
+     * {@link #getUserNameFieldCaption()}, {@link #getPasswordFieldCaption()}
+     * and {@link #getLoginButtonCaption()}. You do not have to use the login
+     * button in your layout.
+     * 
+     * @param userNameField
+     *            the user name text field
+     * @param passwordField
+     *            the password field
+     * @param loginButton
+     *            the login button
+     * @return
+     */
+    protected Component createContent(TextField userNameField,
+            PasswordField passwordField, Button loginButton) {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setSpacing(true);
+        layout.setMargin(true);
+        layout.addComponent(userNameField);
+        layout.addComponent(passwordField);
+        layout.addComponent(loginButton);
+        return layout;
+    }
+
+    private void init() {
+        if (initialized) {
+            return;
+        }
+
+        LoginFormState state = getState();
+        state.userNameFieldConnector = createUserNameField();
+        state.passwordFieldConnector = createPasswordField();
+        state.loginButtonConnector = createLoginButton();
+
+        String contextPath = VaadinService.getCurrentRequest().getContextPath();
+        if (contextPath.endsWith("/")) {
+            contextPath = contextPath.substring(0, contextPath.length() - 1);
+        }
+        state.contextPath = contextPath;
+
+        VaadinSession.getCurrent().addRequestHandler(new RequestHandler() {
+            @Override
+            public boolean handleRequest(VaadinSession session,
+                    VaadinRequest request, VaadinResponse response)
+                    throws IOException {
+                if (LoginFormConstants.LOGIN_URL.equals(request.getPathInfo())) {
+                    response.setContentType("text/html; charset=utf-8");
+                    response.setCacheTime(-1);
+                    PrintWriter writer = response.getWriter();
+                    writer.append("<html>Success</html>");
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        });
+
+        registerRpc(new LoginFormRpc() {
+            @Override
+            public void submitted() {
+                if (loginMode == LoginMode.DIRECT) {
+                    login();
+                }
+            }
+
+            @Override
+            public void submitCompleted() {
+                if (loginMode == LoginMode.DEFERRED) {
+                    login();
+                }
+            }
+        });
+
+        initialized = true;
+
+        setContent(createContent(getUserNameField(), getPasswordField(),
+                getLoginButton()));
+    }
+
+    private TextField getUserNameField() {
+        return (TextField) getState().userNameFieldConnector;
+    }
+
+    private PasswordField getPasswordField() {
+        return (PasswordField) getState().passwordFieldConnector;
+    }
+
+    private Button getLoginButton() {
+        return (Button) getState().loginButtonConnector;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * Handle the login. In deferred mode, this method is called after the dummy
+     * POST request that triggers the password manager has been completed. In
+     * direct mode (the default setting), it is called directly when the user
+     * hits the enter key or clicks on the login button. In the latter case, you
+     * cannot change the URL in the method or the password manager will not be
+     * triggered.
+     */
+    private void login() {
+        HashMap<String, String> params = new HashMap<String, String>();
+        params.put("username", getUserNameField().getValue());
+        params.put("password", getPasswordField().getValue());
+        LoginEvent event = new LoginEvent(LoginForm.this, params);
+        fireEvent(event);
     }
 
     /**
@@ -279,87 +396,6 @@ public class LoginForm extends CustomComponent {
     @Deprecated
     public void removeListener(LoginListener listener) {
         removeLoginListener(listener);
-    }
-
-    @Override
-    public void setWidth(float width, Unit unit) {
-        super.setWidth(width, unit);
-        if (iframe != null) {
-            if (width < 0) {
-                iframe.setWidth(UNDEFINED_WIDTH);
-            } else {
-                iframe.setWidth("100%");
-            }
-        }
-    }
-
-    @Override
-    public void setHeight(float height, Unit unit) {
-        super.setHeight(height, unit);
-        if (iframe != null) {
-            if (height < 0) {
-                iframe.setHeight(UNDEFINED_HEIGHT);
-            } else {
-                iframe.setHeight("100%");
-            }
-        }
-    }
-
-    /**
-     * Returns the caption for the user name field.
-     * 
-     * @return String
-     */
-    public String getUsernameCaption() {
-        return usernameCaption;
-    }
-
-    /**
-     * Sets the caption to show for the user name field. The caption cannot be
-     * changed after the form has been shown to the user.
-     * 
-     * @param usernameCaption
-     */
-    public void setUsernameCaption(String usernameCaption) {
-        this.usernameCaption = usernameCaption;
-    }
-
-    /**
-     * Returns the caption for the password field.
-     * 
-     * @return String
-     */
-    public String getPasswordCaption() {
-        return passwordCaption;
-    }
-
-    /**
-     * Sets the caption to show for the password field. The caption cannot be
-     * changed after the form has been shown to the user.
-     * 
-     * @param passwordCaption
-     */
-    public void setPasswordCaption(String passwordCaption) {
-        this.passwordCaption = passwordCaption;
-    }
-
-    /**
-     * Returns the caption for the login button.
-     * 
-     * @return String
-     */
-    public String getLoginButtonCaption() {
-        return loginButtonCaption;
-    }
-
-    /**
-     * Sets the caption (button text) to show for the login button. The caption
-     * cannot be changed after the form has been shown to the user.
-     * 
-     * @param loginButtonCaption
-     */
-    public void setLoginButtonCaption(String loginButtonCaption) {
-        this.loginButtonCaption = loginButtonCaption;
     }
 
 }
