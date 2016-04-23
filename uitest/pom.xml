@@ -421,6 +421,138 @@
                 </plugins>
             </build>
         </profile>
-    </profiles>
+
+		<!-- Profile used to run browser tests locally on PhantomJS -->
+		<profile>
+			<id>run-testbench</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<properties>
+				<!-- TODO check all these properties -->
+				<browsers.include>phantomjs1</browsers.include>
+				<browsers.exclude></browsers.exclude>
+				<categories.include></categories.include>
+				<categories.exclude></categories.exclude>
+				<useLocalWebDriver>true</useLocalWebDriver>
+				<com.vaadin.testbench.max.retries>0</com.vaadin.testbench.max.retries>
+
+				<!-- Must be provided to test on remote browsers -->
+				<com.vaadin.testbench.hub.url></com.vaadin.testbench.hub.url>
+				<!-- Must be provided unless configured locally -->
+				<vaadin.testbench.developer.license></vaadin.testbench.developer.license>
+
+				<com.vaadin.testbench.screenshot.directory>${basedir}/../tests/screenshots</com.vaadin.testbench.screenshot.directory>
+
+				<!-- TODO is this still needed? -->
+				<runLocally>${useLocalWebDriver}</runLocally>
+
+				<!-- A different value can be used to run specific tests -->
+				<testbench.test>com/vaadin/tests/tb3/AllTB3Tests.java</testbench.test>
+			</properties>
+
+			<build>
+				<plugins>
+					<!-- Installs PhantomJS so it doesn't have to be pre-installed -->
+                    <plugin>
+                        <groupId>com.github.klieber</groupId>
+                        <artifactId>phantomjs-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>install</goal>
+                                </goals>
+                                <configuration>
+                                    <version>${phantomjs.version}</version>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+					<plugin>
+						<artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+						<configuration>
+							<!-- Note: this depends on the classpath order - test-classes is first by default -->
+                            <groups>${testbench.test}</groups>
+							<systemPropertyVariables>
+								<!-- This is set by phantomjs-maven-plugin -->
+                                <phantomjs.binary.path>${phantomjs.binary}</phantomjs.binary.path>
+
+								<!-- TODO many of these might not be required -->
+								<java.awt.headless>true</java.awt.headless>
+
+								<browsers.include>${browsers.include}</browsers.include>
+								<browsers.exclude>${browsers.exclude}</browsers.exclude>
+								<categories.include>${categories.include}</categories.include>
+								<categories.exclude>${categories.exclude}</categories.exclude>
+								<com.vaadin.testbench.max.retries>${com.vaadin.testbench.max.retries}</com.vaadin.testbench.max.retries>
+
+								<com.vaadin.testbench.hub.url>${com.vaadin.testbench.hub.url}</com.vaadin.testbench.hub.url>
+								<vaadin.testbench.developer.license>${vaadin.testbench.developer.license}</vaadin.testbench.developer.license>
+								
+								<com.vaadin.testbench.screenshot.directory>${com.vaadin.testbench.screenshot.directory}</com.vaadin.testbench.screenshot.directory>
+
+								<!--  TODO are both of these needed? -->
+								<useLocalWebDriver>${useLocalWebDriver}</useLocalWebDriver>
+								<com.vaadin.testbench.runLocally>${runLocally}</com.vaadin.testbench.runLocally>>
+							</systemPropertyVariables>
+						</configuration>
+					</plugin>
+
+					<!-- TODO could/should use the jetty plugin defined elsewhere -->
+					<plugin>
+						<groupId>org.mortbay.jetty</groupId>
+						<artifactId>jetty-maven-plugin</artifactId>
+						<version>8.1.16.v20140903</version>
+
+						<configuration>
+							<!-- TODO jvmArgs here don't work with "start" - need to use MAVEN_OPTS or "run-forked" -->
+							<jvmArgs>-ea</jvmArgs>
+							<webApp>
+								<contextPath>/</contextPath>
+							</webApp>
+							<!-- TODO this would not work with run-forked - need to use jetty XML conf in that case -->
+							<connectors>
+								<connector implementation="org.eclipse.jetty.server.nio.SelectChannelConnector">
+									<port>8888</port>
+								</connector>
+							</connectors>
+							<stopKey>STOP</stopKey>
+							<stopPort>8005</stopPort>
+						</configuration>
+
+						<executions>
+							<execution>
+								<id>start-jetty</id>
+								<phase>pre-integration-test</phase>
+								<goals>
+									<goal>start</goal>
+								</goals>
+								<configuration>
+									<daemon>true</daemon>
+									<scanIntervalSeconds>0</scanIntervalSeconds>
+								</configuration>
+							</execution>
+							<execution>
+								<id>stop-jetty</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>stop</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

@@ -63,6 +63,15 @@ The following preferences need to be set to keep the project consistent. You nee
 
 ## Setting up IntelliJ IDEA to Develop Vaadin 7
 
+Running automated UI tests
+=========
+To run automated Vaadin TestBench tests, a Vaadin TestBench license is needed. After installing the license and performing a full build of the project, run the following command in the uitest module:
+`mvn verify -P run-testbench`
+
+By default, tests are only run against a local PhantomJS 1.
+
+Setting up IntelliJ IDEA to Develop Vaadin 7
+=========
 1. Intall and run IDEA. Ultimate Edition is better but Community Edition should also work.
 1. Ensure if Git and Maven plugins are installed, properly configured and enabled.
 1. Clone the repository, using menu VCS -> Checkout from Version Control -> Git -> Git Repository URL -> https://github.com/vaadin/framework.git.
