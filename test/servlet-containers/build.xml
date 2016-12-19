@@ -3,13 +3,13 @@
 <project name="vaadin-uitest" basedir="." default="fetch-war"
     xmlns:ivy="antlib:org.apache.ivy.ant">
     <description>
-        Provides a uitest WAR containing Vaadin UI tests
+        Provides a servlet integration test WAR containing Vaadin servlet container tests
     </description>
     <include file="../common.xml" as="common" />
 
     <!-- global properties -->
-    <property name="module.name" value="vaadin-uitest" />
-    <property name="uitest.dir" location="${vaadin.basedir}/uitest" />
+    <property name="module.name" value="servlet-containers" />
+    <property name="module.dir" location="${vaadin.basedir}/test/servlet-containers" />
     <property name="result.dir" value="result" />
     <property name="theme.result.dir" value="${result.dir}/VAADIN/themes" />
     <property name="result.war"
@@ -33,7 +33,7 @@
         <property name="war.file"
             location="${vaadin.basedir}/uitest/target/vaadin-uitest-${vaadin.version}.war" />
         <mkdir dir="${vaadin.basedir}/result" />
-        <ant antfile="${uitest.dir}/integration_tests.xml"
+        <ant antfile="${module.dir}/integration_tests.xml"
             target="integration-test-all" inheritall="false"
             inheritrefs="false">
             <property name="demo.war" value="${war.file}" />
