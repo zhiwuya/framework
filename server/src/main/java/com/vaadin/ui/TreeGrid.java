@@ -15,13 +15,21 @@
  */
 package com.vaadin.ui;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import com.vaadin.data.HierarchyData;
+import com.vaadin.data.HierarchyData.HierarchyDataBuilder;
 import com.vaadin.data.provider.DataProvider;
 import com.vaadin.data.provider.HierarchicalDataCommunicator;
 import com.vaadin.data.provider.HierarchicalDataProvider;
+import com.vaadin.data.provider.InMemoryHierarchicalDataProvider;
 import com.vaadin.shared.ui.treegrid.NodeCollapseRpc;
 import com.vaadin.shared.ui.treegrid.TreeGridState;
 
@@ -52,20 +60,22 @@ public class TreeGrid<T> extends Grid<T> {
         });
     }
 
-    // TODO: construct a "flat" in memory hierarchical data provider?
     @Override
     public void setItems(Collection<T> items) {
-        throw new UnsupportedOperationException("Not implemented");
+        setDataProvider(new InMemoryHierarchicalDataProvider<>(
+                HierarchyData.<T> builder().addItems(null, items)));
     }
 
     @Override
     public void setItems(Stream<T> items) {
-        throw new UnsupportedOperationException("Not implemented");
+        setDataProvider(new InMemoryHierarchicalDataProvider<>(
+                HierarchyData.<T> builder().addItems(null, items)));
     }
 
     @Override
     public void setItems(T... items) {
-        throw new UnsupportedOperationException("Not implemented");
+        setDataProvider(new InMemoryHierarchicalDataProvider<>(
+                HierarchyData.<T> builder().addItems(null, items)));
     }
 
     @Override
@@ -127,5 +137,42 @@ public class TreeGrid<T> extends Grid<T> {
             throw new IllegalStateException("No data provider has been set.");
         }
         return (HierarchicalDataProvider<T, ?>) dataProvider;
+    }
+
+    @Override
+    protected void readData(Element body,
+            List<DeclarativeValueProvider<T>> providers) {
+        getSelectionModel().deselectAll();
+        List<T> items = new ArrayList<>();
+        List<T> selectedItems = new ArrayList<>();
+        HierarchyDataBuilder<T> builder = HierarchyData.builder();
+
+        for (Element row : body.children()) {
+            T item = deserializeDeclarativeRepresentation(row.attr("item"));
+        }
+
+        for (Element row : body.children()) {
+            T item = deserializeDeclarativeRepresentation(row.attr("item"));
+            items.add(item);
+            if (row.hasAttr("selected")) {
+                selectedItems.add(item);
+            }
+            Elements cells = row.children();
+            int i = 0;
+            for (Element cell : cells) {
+                providers.get(i).addValue(item, cell.html());
+                i++;
+            }
+        }
+
+        setItems(items);
+        selectedItems.forEach(getSelectionModel()::select);
+    }
+
+    private void readDataRecursive(Element item,
+            List<DeclarativeValueProvider<T>> providers, List<T> items,
+            List<T> selectedItems) {
+
+
     }
 }

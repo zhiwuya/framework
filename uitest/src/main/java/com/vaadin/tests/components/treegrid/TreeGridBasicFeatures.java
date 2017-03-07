@@ -1,9 +1,14 @@
 package com.vaadin.tests.components.treegrid;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.Widgetset;
+import com.vaadin.data.HierarchyData;
+import com.vaadin.data.HierarchyData.HierarchyDataBuilder;
+import com.vaadin.data.provider.InMemoryHierarchicalDataProvider;
 import com.vaadin.tests.components.AbstractComponentTest;
 import com.vaadin.ui.TreeGrid;
 
@@ -12,7 +17,7 @@ import com.vaadin.ui.TreeGrid;
 public class TreeGridBasicFeatures extends AbstractComponentTest<TreeGrid> {
 
     private TreeGrid<HierarchicalTestBean> grid;
-    private InMemoryHierarchicalDataProvider inMemoryDataProvider = new InMemoryHierarchicalDataProvider();
+    private InMemoryHierarchicalDataProvider<HierarchicalTestBean> inMemoryDataProvider;
 
     @Override
     public TreeGrid getComponent() {
@@ -26,6 +31,7 @@ public class TreeGridBasicFeatures extends AbstractComponentTest<TreeGrid> {
 
     @Override
     protected void initializeComponents() {
+        initializeInMemoryDataProvider();
         grid = new TreeGrid<>();
         grid.setSizeFull();
         grid.addColumn(HierarchicalTestBean::toString).setCaption("String")
@@ -35,8 +41,8 @@ public class TreeGridBasicFeatures extends AbstractComponentTest<TreeGrid> {
         grid.addColumn(HierarchicalTestBean::getIndex)
                 .setCaption("Index on this depth").setId("index");
         grid.setHierarchyColumn("string");
-        // grid.setDataProvider(inMemoryDataProvider);
-        grid.setDataProvider(new LazyHierarchicalDataProvider(100, 3));
+        grid.setDataProvider(inMemoryDataProvider);
+        // grid.setDataProvider(new LazyHierarchicalDataProvider(100, 3));
 
         grid.setId("testComponent");
         addTestComponent(grid);
@@ -47,6 +53,26 @@ public class TreeGridBasicFeatures extends AbstractComponentTest<TreeGrid> {
         super.createActions();
 
         createHierarchyColumnSelect();
+    }
+
+    private void initializeInMemoryDataProvider() {
+        HierarchyDataBuilder<HierarchicalTestBean> builder = HierarchyData
+                .builder();
+
+        List<Integer> ints = Arrays.asList(1, 2, 3);
+
+        ints.stream().forEach(index -> {
+            HierarchicalTestBean parentBean = new HierarchicalTestBean(0,
+                    index);
+            builder.addItem(null, parentBean);
+            ints.stream()
+                    .forEach(childIndex -> builder.addItem(
+                            parentBean,
+                            new HierarchicalTestBean(1, childIndex)));
+        });
+
+        inMemoryDataProvider = new InMemoryHierarchicalDataProvider<>(
+                builder.build());
     }
 
     private void createHierarchyColumnSelect() {

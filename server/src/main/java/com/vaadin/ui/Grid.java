@@ -3682,7 +3682,7 @@ public class Grid<T> extends AbstractListing<T> implements HasComponents,
         }
     }
 
-    private void readData(Element body,
+    protected void readData(Element body,
             List<DeclarativeValueProvider<T>> providers) {
         getSelectionModel().deselectAll();
         List<T> items = new ArrayList<>();
