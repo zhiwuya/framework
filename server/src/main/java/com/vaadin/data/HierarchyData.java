@@ -15,6 +15,7 @@
  */
 package com.vaadin.data;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,9 +32,9 @@ import java.util.stream.Stream;
  *
  * @param <T>
  */
-public class HierarchyData<T> {
+public class HierarchyData<T> implements Serializable {
 
-    private static class HierarchyWrapper<T> {
+    private static class HierarchyWrapper<T> implements Serializable {
         private T item;
         private T parent;
         private List<T> children;
@@ -77,7 +78,7 @@ public class HierarchyData<T> {
         }
     }
 
-    public static class HierarchyDataBuilder<T> {
+    public static class HierarchyDataBuilder<T> implements Serializable {
 
         private final HierarchyData<T> hierarchyData = new HierarchyData<>();
 

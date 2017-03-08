@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import org.jsoup.nodes.Attributes;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
@@ -32,6 +33,8 @@ import com.vaadin.data.provider.HierarchicalDataProvider;
 import com.vaadin.data.provider.InMemoryHierarchicalDataProvider;
 import com.vaadin.shared.ui.treegrid.NodeCollapseRpc;
 import com.vaadin.shared.ui.treegrid.TreeGridState;
+import com.vaadin.ui.declarative.DesignAttributeHandler;
+import com.vaadin.ui.declarative.DesignContext;
 
 /**
  * A grid component for displaying hierarchical tabular data.
@@ -126,34 +129,34 @@ public class TreeGrid<T> extends Grid<T> {
 
     @Override
     public HierarchicalDataProvider<T, ?> getDataProvider() {
-        DataProvider<T, ?> dataProvider = super.getDataProvider();
-        // FIXME DataCommunicator by default has a CallbackDataProvider if no
-        // DataProvider is set, resulting in a class cast exception if we don't
-        // check it here.
+        return (HierarchicalDataProvider<T, ?>) super.getDataProvider();
+    }
 
-        // Once fixed, remove this method from the exclude list in
-        // StateGetDoesNotMarkDirtyTest
-        if (!(dataProvider instanceof HierarchicalDataProvider)) {
-            throw new IllegalStateException("No data provider has been set.");
+    @Override
+    protected void doReadDesign(Element design, DesignContext context) {
+        super.doReadDesign(design, context);
+        Attributes attrs = design.attributes();
+        if (attrs.hasKey("hierarchy-column")) {
+            setHierarchyColumn(DesignAttributeHandler
+                    .readAttribute("hierarchy-column", attrs, String.class));
         }
-        return (HierarchicalDataProvider<T, ?>) dataProvider;
     }
 
     @Override
     protected void readData(Element body,
             List<DeclarativeValueProvider<T>> providers) {
         getSelectionModel().deselectAll();
-        List<T> items = new ArrayList<>();
         List<T> selectedItems = new ArrayList<>();
         HierarchyDataBuilder<T> builder = HierarchyData.builder();
 
         for (Element row : body.children()) {
             T item = deserializeDeclarativeRepresentation(row.attr("item"));
-        }
-
-        for (Element row : body.children()) {
-            T item = deserializeDeclarativeRepresentation(row.attr("item"));
-            items.add(item);
+            T parent = null;
+            if (row.hasAttr("parent")) {
+                parent = deserializeDeclarativeRepresentation(
+                        row.attr("parent"));
+            }
+            builder.addItem(parent, item);
             if (row.hasAttr("selected")) {
                 selectedItems.add(item);
             }
@@ -165,14 +168,7 @@ public class TreeGrid<T> extends Grid<T> {
             }
         }
 
-        setItems(items);
+        setDataProvider(new InMemoryHierarchicalDataProvider<>(builder));
         selectedItems.forEach(getSelectionModel()::select);
-    }
-
-    private void readDataRecursive(Element item,
-            List<DeclarativeValueProvider<T>> providers, List<T> items,
-            List<T> selectedItems) {
-
-
     }
 }
