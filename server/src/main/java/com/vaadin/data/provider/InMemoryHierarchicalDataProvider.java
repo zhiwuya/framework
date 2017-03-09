@@ -57,9 +57,8 @@ public class InMemoryHierarchicalDataProvider<T>
     public Stream<T> fetchChildren(
             HierarchicalQuery<T, SerializablePredicate<T>> query) {
         Stream<T> childStream = hierarchyData.getChildren(query.getParent())
-                .subList(query.getOffset(),
-                        query.getOffset() + query.getLimit())
                 .stream();
-        return query.getFilter().map(childStream::filter).orElse(childStream);
+        return query.getFilter().map(childStream::filter).orElse(childStream)
+                .skip(query.getOffset()).limit(query.getLimit());
     }
 }

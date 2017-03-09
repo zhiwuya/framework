@@ -3721,14 +3721,18 @@ public class Grid<T> extends AbstractListing<T> implements HasComponents,
 
         if (designContext.shouldWriteData(this)) {
             Element bodyElement = tableElement.appendElement("tbody");
-            getDataProvider().fetch(new Query<>()).forEach(
-                    item -> writeRow(bodyElement, item, designContext));
+            writeData(bodyElement, designContext);
         }
 
         if (getFooter().getRowCount() > 0) {
             getFooter().writeDesign(tableElement.appendElement("tfoot"),
                     designContext);
         }
+    }
+
+    protected void writeData(Element body, DesignContext designContext) {
+        getDataProvider().fetch(new Query<>())
+                .forEach(item -> writeRow(body, item, designContext));
     }
 
     private void writeRow(Element container, T item, DesignContext context) {

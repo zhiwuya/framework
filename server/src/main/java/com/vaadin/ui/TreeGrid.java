@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.jsoup.nodes.Attributes;
@@ -30,11 +31,13 @@ import com.vaadin.data.HierarchyData.HierarchyDataBuilder;
 import com.vaadin.data.provider.DataProvider;
 import com.vaadin.data.provider.HierarchicalDataCommunicator;
 import com.vaadin.data.provider.HierarchicalDataProvider;
+import com.vaadin.data.provider.HierarchicalQuery;
 import com.vaadin.data.provider.InMemoryHierarchicalDataProvider;
 import com.vaadin.shared.ui.treegrid.NodeCollapseRpc;
 import com.vaadin.shared.ui.treegrid.TreeGridState;
 import com.vaadin.ui.declarative.DesignAttributeHandler;
 import com.vaadin.ui.declarative.DesignContext;
+import com.vaadin.ui.declarative.DesignFormatter;
 
 /**
  * A grid component for displaying hierarchical tabular data.
@@ -129,6 +132,9 @@ public class TreeGrid<T> extends Grid<T> {
 
     @Override
     public HierarchicalDataProvider<T, ?> getDataProvider() {
+        if (!(super.getDataProvider() instanceof HierarchicalDataProvider)) {
+            return null;
+        }
         return (HierarchicalDataProvider<T, ?>) super.getDataProvider();
     }
 
@@ -170,5 +176,33 @@ public class TreeGrid<T> extends Grid<T> {
 
         setDataProvider(new InMemoryHierarchicalDataProvider<>(builder));
         selectedItems.forEach(getSelectionModel()::select);
+    }
+
+    @Override
+    protected void writeData(Element body, DesignContext designContext) {
+        getDataProvider().fetch(new HierarchicalQuery<>(null, null))
+                .forEach(item -> writeRow(body, item, null, designContext));
+    }
+
+    private void writeRow(Element container, T item, T parent,
+            DesignContext context) {
+        Element tableRow = container.appendElement("tr");
+        tableRow.attr("item", serializeDeclarativeRepresentation(item));
+        if (parent != null) {
+            tableRow.attr("parent", serializeDeclarativeRepresentation(parent));
+        }
+        if (getSelectionModel().isSelected(item)) {
+            tableRow.attr("selected", "");
+        }
+        for (Column<T, ?> column : getColumns()) {
+            Object value = column.getValueProvider().apply(item);
+            tableRow.appendElement("td")
+                    .append(Optional.ofNullable(value).map(Object::toString)
+                            .map(DesignFormatter::encodeForTextNode)
+                            .orElse(""));
+        }
+        getDataProvider().fetch(new HierarchicalQuery<>(null, item))
+                .forEach(childItem -> writeRow(container, childItem, item,
+                        context));
     }
 }

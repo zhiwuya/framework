@@ -133,6 +133,10 @@ public class HierarchyData<T> implements Serializable {
     }
 
     public List<T> getChildren(T item) {
+        if (!contains(item)) {
+            throw new IllegalArgumentException(
+                    "Item '" + item + "' not in the hierarchy");
+        }
         return itemToWrapperMap.get(item).getChildren();
     }
 

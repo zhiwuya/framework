@@ -33,7 +33,7 @@ import java.util.stream.Stream;
  */
 public class HierarchyMapper implements Serializable {
 
-    public static class TreeLevelQuery {
+    public static class TreeLevelQuery implements Serializable {
         final TreeNode node;
         final int startIndex;
         final int size;

@@ -15,6 +15,7 @@
  */
 package com.vaadin.tests.server.component.grid;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -42,6 +43,7 @@ import com.vaadin.ui.components.grid.FooterCell;
 import com.vaadin.ui.components.grid.FooterRow;
 import com.vaadin.ui.components.grid.HeaderCell;
 import com.vaadin.ui.components.grid.HeaderRow;
+import com.vaadin.ui.declarative.Design;
 import com.vaadin.ui.declarative.DesignContext;
 import com.vaadin.ui.declarative.DesignException;
 
@@ -315,7 +317,14 @@ public class GridDeclarativeTest extends AbstractListingDeclarativeTest<Grid> {
                 person2.getFirstName(), person2.getLastName(),
                 person3.toString(), person3.getFirstName(),
                 person3.getLastName(), getComponentTag());
-
+        try {
+            DesignContext ctx = new DesignContext();
+            ctx.setRootComponent(grid);
+            ctx.setShouldWriteDataDelegate(component -> true);
+            Design.write(ctx, System.out);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         Grid<?> readGrid = testRead(design, grid, true, true);
         Assert.assertEquals(3, readGrid.getDataProvider().size(new Query<>()));
         testWrite(design, grid, true);
