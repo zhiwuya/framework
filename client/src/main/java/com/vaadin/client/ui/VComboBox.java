@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import com.google.gwt.aria.client.Roles;
@@ -243,12 +244,12 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
             return $entry(function(e) {
                 var deltaX = e.deltaX ? e.deltaX : -0.5*e.wheelDeltaX;
                 var deltaY = e.deltaY ? e.deltaY : -0.5*e.wheelDeltaY;
-
+        
                 // IE8 has only delta y
                 if (isNaN(deltaY)) {
                     deltaY = -0.5*e.wheelDelta;
                 }
-
+        
                 @com.vaadin.client.ui.VComboBox.JsniUtil::moveScrollFromEvent(*)(widget, deltaX, deltaY, e, e.deltaMode);
             });
         }-*/;
@@ -1633,7 +1634,7 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
     private int totalSuggestions;
 
     /** For internal use only. May be removed or replaced in the future. */
-    public boolean nullSelectionAllowed;
+    private boolean nullSelectionAllowed;
 
     /** For internal use only. May be removed or replaced in the future. */
     public boolean nullSelectItem;
@@ -1914,10 +1915,9 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
                     + suggestion.key + ")");
         }
         // special handling of null selection
-        if (suggestion.key.equals("")) {
-            onNullSelected();
-            return;
-        }
+        /*
+         * if (suggestion.key.equals("")) { onNullSelected(); return; }
+         */
 
         dataReceivedHandler.cancelPendingPostFiltering();
 
@@ -1928,7 +1928,7 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
         setText(text);
         setSelectedItemIcon(suggestion.getIconUri());
 
-        if (!newKey.equals(selectedOptionKey)) {
+        if (!Objects.equals(newKey, selectedOptionKey)) {
             selectedOptionKey = newKey;
             connector.sendSelection(selectedOptionKey);
             setSelectedCaption(text);
@@ -1949,8 +1949,6 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
         dataReceivedHandler.cancelPendingPostFiltering();
 
         currentSuggestion = null;
-        setText("");
-        setSelectedItemIcon(null);
 
         if (!"".equals(selectedOptionKey) || selectedOptionKey != null) {
             selectedOptionKey = "";
@@ -1958,6 +1956,8 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
             connector.sendSelection(null);
             // currentPage = 0;
         }
+        updateEmptySelectionCaption();
+        setSelectedItemIcon(null);
         updatePlaceholder();
 
         suggestionPopup.hide();
@@ -2028,7 +2028,7 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
         if (selectedKey == null || "".equals(selectedKey)) {
             currentSuggestion = null; // #13217
             selectedOptionKey = null;
-            setText("");
+            updateEmptySelectionCaption();
         }
         // some item selected
         for (ComboBoxSuggestion suggestion : currentSuggestions) {
@@ -2305,7 +2305,11 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
 
         // just fetch selected information from state
         String text = connector.getState().selectedItemCaption;
-        setText(text == null ? "" : text);
+        if (text == null) {
+            updateEmptySelectionCaption();
+        } else {
+            setText(text);
+        }
         setSelectedItemIcon(connector.getState().selectedItemIcon);
         selectedOptionKey = (connector.getState().selectedItemKey);
         if (selectedOptionKey == null || "".equals(selectedOptionKey)) {
@@ -2448,6 +2452,7 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
 
     private String explicitSelectedCaption;
     private boolean iconUpdating = false;
+    private String emptySelectionCaption = "";
 
     /*
      * (non-Javadoc)
@@ -2819,5 +2824,47 @@ public class VComboBox extends Composite implements Field, KeyDownHandler,
      */
     public boolean getNullSelectionItemShouldBeVisible() {
         return nullSelectionAllowed && "".equals(lastFilter);
+    }
+
+    /**
+     * Sets the empty selection caption to be shown as the text when selection
+     * is empty.
+     * 
+     * @param emptySelectionCaption
+     *            the empty selection caption
+     */
+    public void setEmptySelectionCaption(String emptySelectionCaption) {
+        if (emptySelectionCaption == null) {
+            emptySelectionCaption = "";
+        }
+        this.emptySelectionCaption = emptySelectionCaption;
+        updateEmptySelectionCaption();
+    }
+
+    private void updateEmptySelectionCaption() {
+        if (Objects.equals(selectedOptionKey, "")
+                || Objects.equals(selectedOptionKey, null)) {
+            setText(nullSelectionAllowed ? emptySelectionCaption : "");
+        }
+    }
+
+    /**
+     * Sets whether selecting null value is allowed.
+     *
+     * @param nullSelectionAllowed
+     *            true to allow selecting null, false to prevent it
+     */
+    public void setNullSelectionAllowed(boolean nullSelectionAllowed) {
+        this.nullSelectionAllowed = nullSelectionAllowed;
+        updateEmptySelectionCaption();
+    }
+
+    /**
+     * Sets whether selecting null value is allowed.
+     *
+     * @return true if selecting null, false to prevent it
+     */
+    public boolean isNullSelectionAllowed() {
+        return nullSelectionAllowed;
     }
 }

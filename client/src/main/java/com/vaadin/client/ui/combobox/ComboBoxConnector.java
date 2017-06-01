@@ -81,7 +81,7 @@ public class ComboBoxConnector extends AbstractListingConnector
 
         // TODO if the pop up is opened, the actual item should be removed from
         // the popup (?)
-        getWidget().nullSelectionAllowed = getState().emptySelectionAllowed;
+        getWidget().setNullSelectionAllowed(getState().emptySelectionAllowed);
         // TODO having this true would mean that the empty selection item comes
         // from the data source so none needs to be added - currently
         // unsupported
@@ -105,9 +105,11 @@ public class ComboBoxConnector extends AbstractListingConnector
             suggestions.remove(0);
             addEmptySelectionItem();
         }
+        getWidget().setEmptySelectionCaption(getState().emptySelectionCaption);
     }
 
-    @OnStateChange({ "selectedItemKey", "selectedItemCaption", "selectedItemIcon" })
+    @OnStateChange({ "selectedItemKey", "selectedItemCaption",
+            "selectedItemIcon" })
     private void onSelectionChange() {
         getDataReceivedHandler().updateSelectionFromServer(
                 getState().selectedItemKey, getState().selectedItemCaption,
@@ -208,7 +210,7 @@ public class ComboBoxConnector extends AbstractListingConnector
                 page = 0;
             }
         }
-        int adjustment = getWidget().nullSelectionAllowed && "".equals(filter)
+        int adjustment = getState().emptySelectionAllowed && "".equals(filter)
                 ? 1 : 0;
         int startIndex = Math.max(0,
                 page * getWidget().pageLength - adjustment);
@@ -363,7 +365,7 @@ public class ComboBoxConnector extends AbstractListingConnector
                 if (row != null) {
                     String key = getRowKey(row);
                     if (getWidget().selectedOptionKey.equals(key)) {
-                        if (getWidget().nullSelectionAllowed) {
+                        if (getState().emptySelectionAllowed) {
                             getWidget().currentPage = (i + 1)
                                     / getState().pageLength;
                         } else {

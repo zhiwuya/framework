@@ -18,6 +18,7 @@ package com.vaadin.tests.components.combobox;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.vaadin.annotations.Widgetset;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.tests.components.AbstractTestUI;
 import com.vaadin.ui.Button;
@@ -27,6 +28,7 @@ import com.vaadin.ui.ComboBox;
  * @author Vaadin Ltd
  *
  */
+@Widgetset("com.vaadin.DefaultWidgetSet")
 public class ComboBoxEmptyCaption extends AbstractTestUI {
 
     @Override
@@ -41,8 +43,8 @@ public class ComboBoxEmptyCaption extends AbstractTestUI {
         Button resetCaption = new Button(
                 "Set empty selection caption to empty string",
                 event -> combo.setEmptySelectionCaption(""));
-        Button disableCaption = new Button("Disable empty selection caption",
-                event -> combo.setEmptySelectionAllowed(false));
+        Button disableCaption = new Button("Enable/Disable empty selection caption",
+                event -> combo.setEmptySelectionAllowed(!combo.isEmptySelectionAllowed()));
         addComponents(setCaption, resetCaption, disableCaption);
     }
 }

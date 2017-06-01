@@ -17,13 +17,20 @@ package com.vaadin.tests.components.combobox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.remote.DesiredCapabilities;
 
 import com.vaadin.testbench.elements.ButtonElement;
 import com.vaadin.testbench.elements.ComboBoxElement;
+import com.vaadin.testbench.parallel.Browser;
+import com.vaadin.testbench.parallel.BrowserUtil;
 import com.vaadin.tests.tb3.MultiBrowserTest;
 
 /**
@@ -55,6 +62,26 @@ public class ComboBoxEmptyCaptionTest extends MultiBrowserTest {
     }
 
     @Test
+    public void selectedEmptyItem() {
+        ComboBoxElement combo = $(ComboBoxElement.class).first();
+        // set "empty"
+        $(ButtonElement.class).first().click();
+        ensureSuggestions(combo, "empty", "item1", "item2", "item3", "item4",
+                "item5", "item6", "item7", "item8", "item9");
+
+        Assert.assertEquals("Null selection should display 'empty'", "empty",
+                combo.getInputField().getAttribute("value"));
+
+        // set ""
+        $(ButtonElement.class).get(1).click();
+        Assert.assertEquals("Null selection should be ''", "",
+                combo.getInputField().getAttribute("value"));
+
+        ensureSuggestions(combo, " ", "item1", "item2", "item3", "item4",
+                "item5", "item6", "item7", "item8", "item9");
+    }
+
+    @Test
     public void resetEmptyItem() {
         ComboBoxElement combo = $(ComboBoxElement.class).first();
         // set some caption for the empty selection element
@@ -77,8 +104,9 @@ public class ComboBoxEmptyCaptionTest extends MultiBrowserTest {
     private void ensureSuggestions(ComboBoxElement element,
             String... suggestions) {
         element.openPopup();
-        System.out.println(element.getPopupSuggestions());
         Assert.assertEquals(Arrays.asList(suggestions),
                 new ArrayList<>(element.getPopupSuggestions()));
+        // Close the popup
+        new Actions(getDriver()).sendKeys(Keys.ESCAPE).perform();
     }
 }
